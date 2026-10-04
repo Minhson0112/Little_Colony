@@ -8,7 +8,8 @@ Backend .NET chạy local nằm trong [`Backend/`](Backend/README.md), tách kh�
 
 - Unity **6000.4.2f1**, kèm WebGL Build Support.
 - Unity Hub → Add project from disk → chọn thư mục này.
-- Mở `Assets/Scenes/Main.unity`, nhấn Play.
+- Chọn **Little Colony → Play game** để mở đúng scene và chạy, hoặc mở `Assets/Scenes/Main.unity` rồi nhấn Play.
+- Nếu Game view báo **No cameras rendering**, kiểm tra Hierarchy có scene `Main` và object `Little Colony`. Camera và bản đồ được tạo bởi `VillageGame` khi Play; chạy một scene trống sẽ không có camera. Menu **Little Colony → Open main scene** mở scene hiện có mà không tạo lại nó.
 - Màn hình chào có nền vườn minh họa, chọn English/Tiếng Việt và bật/tắt âm thanh. Chọn **Play as a guest / Chơi khách** để vào bản lưu hiện có. Discord/Facebook hỗ trợ đăng nhập và lưu cloud khi backend đã có cấu hình; xem [`Docs/LOGIN_SCREEN.md`](Docs/LOGIN_SCREEN.md) và [`Docs/DISCORD_CLOUD_SAVE.md`](Docs/DISCORD_CLOUD_SAVE.md).
 - Nhạc nền từ `Assets/Resources/Audio/BackyardMusic.mp3` tự phát và lặp trong lúc chơi. Trên trình duyệt, hãy tương tác với trang để bật âm thanh nếu trình duyệt chặn tự phát.
 - Âm đêm và âm mưa phát lặp trên hai lớp riêng bên trên nhạc nền. Khi trời vừa tối vừa mưa, cả ba lớp phát cùng lúc; mỗi lớp môi trường dịu dần khi điều kiện tương ứng kết thúc.

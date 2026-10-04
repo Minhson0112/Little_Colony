@@ -12,6 +12,53 @@ namespace LittleColony.Editor
     /// </summary>
     public static class ProjectSetup
     {
+        /// <summary>Opens the saved gameplay scene and starts it, preserving unsaved scene edits first.</summary>
+        [MenuItem("Little Colony/Play game")]
+        public static void PlayGame()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                return;
+            }
+            if (TryOpenMainScene())
+            {
+                EditorApplication.isPlaying = true;
+            }
+        }
+
+        /// <summary>Opens and validates the existing entry scene without rebuilding or replacing its contents.</summary>
+        [MenuItem("Little Colony/Open main scene")]
+        public static void OpenMainScene()
+        {
+            TryOpenMainScene();
+        }
+
+        /// <summary>Validates and opens the entry scene only when pending edits can safely be left.</summary>
+        /// <returns>Whether the gameplay scene is ready to run.</returns>
+        private static bool TryOpenMainScene()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                return false;
+            }
+            const string path = "Assets/Scenes/Main.unity";
+            if (!File.Exists(path))
+            {
+                throw new InvalidOperationException("Main scene is missing. Restore Assets/Scenes/Main.unity from source control.");
+            }
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                return false;
+            }
+            EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+            if (UnityEngine.Object.FindFirstObjectByType<VillageGame>() == null)
+            {
+                throw new InvalidOperationException("Main scene must contain an active VillageGame component.");
+            }
+            Debug.Log("LITTLE_COLONY_MAIN_SCENE_OK: VillageGame is ready; Play creates the camera and garden.");
+            return true;
+        }
+
         /// <summary>
         /// Creates and saves the initial scene, then applies project settings.
         /// </summary>

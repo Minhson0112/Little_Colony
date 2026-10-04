@@ -660,8 +660,10 @@ namespace LittleColony
         }
 
         /// <summary>
-        /// Creates a village with the existing starter resources, home, and worksite.
+        /// Creates an empty level-one village with 1,000 acorns for player-directed construction.
         /// </summary>
+        /// <param name="now">The initial saved timestamp used for offline progress and weather.</param>
+        /// <returns>A valid village without buildings or residents.</returns>
         public static VillageState NewGame(long now)
         {
             var state = new VillageState
@@ -669,8 +671,6 @@ namespace LittleColony
                 savedAt = now,
                 weatherSeed = (int)(now % int.MaxValue)
             };
-            state.Add(BuildingKind.AntHome, -4, 0);
-            state.Add(BuildingKind.Pile, 4, 0);
             return state;
         }
 

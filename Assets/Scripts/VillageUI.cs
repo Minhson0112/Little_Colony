@@ -44,6 +44,8 @@ namespace LittleColony
         private string expansionMessage;
         private Texture2D bookIcon;
         private Texture2D gearIcon;
+        private Texture2D discordIcon;
+        private const string CommunityInviteUrl = "https://discord.gg/chill-station";
         private Texture2D sunIcon;
         private Texture2D moonIcon;
         private Texture2D rainIcon;
@@ -51,6 +53,7 @@ namespace LittleColony
         private bool shopOpen;
         private bool settingsOpen;
         private bool audioSettingsOpen;
+        private bool guestResetPending;
         private GUIStyle volumeSliderTrack;
         private GUIStyle volumeSliderThumb;
 
@@ -66,7 +69,7 @@ namespace LittleColony
         {
             get
             {
-                float height = audioSettingsOpen ? 285 : 190;
+                float height = (audioSettingsOpen ? 285 : 190) + 60;
                 if (Game.Cloud != null && Game.Cloud.IsActive)
                 {
                     height += 144;
@@ -74,6 +77,10 @@ namespace LittleColony
                     {
                         height += 48;
                     }
+                }
+                else
+                {
+                    height += guestResetPending ? 154 : 110;
                 }
                 return new Rect((W - 400) / 2, (H - height) / 2, 400, height);
             }
@@ -556,6 +563,7 @@ namespace LittleColony
             lockIcon = CreateIconTexture("lock");
             bookIcon = CreateIconTexture("book");
             gearIcon = CreateIconTexture("gear");
+            discordIcon = LoginScreenStyles.CreateDiscordIcon();
             sunIcon = CreateIconTexture("sun");
             moonIcon = CreateIconTexture("moon");
             rainIcon = CreateIconTexture("rain");
@@ -993,6 +1001,7 @@ namespace LittleColony
             if (clicked)
             {
                 settingsOpen = !settingsOpen;
+                guestResetPending = false;
                 if (settingsOpen)
                 {
                     shopOpen = false;
@@ -1013,6 +1022,7 @@ namespace LittleColony
             }
 
             settingsOpen = false;
+            guestResetPending = false;
             return true;
         }
 
@@ -1055,6 +1065,7 @@ namespace LittleColony
             if (!audioSettingsOpen)
             {
                 DrawAccountSettings(panel, panel.y + 177);
+                DrawCommunityLink(panel);
                 return;
             }
 
@@ -1067,6 +1078,7 @@ namespace LittleColony
                 Game.SetMasterVolume(volume);
             }
             DrawAccountSettings(panel, panel.y + 272);
+            DrawCommunityLink(panel);
         }
 
         /// <summary>Shows automatic synchronization status and account actions only inside settings.</summary>
@@ -1075,6 +1087,7 @@ namespace LittleColony
             VillageCloudSave cloud = Game.Cloud;
             if (cloud == null || !cloud.IsActive)
             {
+                DrawGuestSettings(panel, y);
                 return;
             }
 
@@ -1106,6 +1119,57 @@ namespace LittleColony
                 cloud.RequestLogout();
             }
             GUI.enabled = previousEnabled;
+        }
+
+        /// <summary>Shows local autosave and an explicit, cancelable restart for guest progress.</summary>
+        /// <param name="panel">The settings panel containing the controls.</param>
+        /// <param name="y">The vertical start of the guest section.</param>
+        private void DrawGuestSettings(Rect panel, float y)
+        {
+            DrawLabel(new Rect(panel.x + 20, y, panel.width - 40, 24), I18n.Text("settings.guest"), heading);
+            if (!guestResetPending)
+            {
+                DrawLabel(new Rect(panel.x + 20, y + 29, panel.width - 40, 24), I18n.Text("settings.autosave"), small);
+                if (DrawButton(new Rect(panel.x + 20, y + 60, panel.width - 40, 42),
+                    I18n.Text("settings.guest_restart"), Game.CanStartNewGuestVillage, false, true))
+                {
+                    guestResetPending = true;
+                }
+                return;
+            }
+
+            DrawLabel(new Rect(panel.x + 20, y + 29, panel.width - 40, 58),
+                I18n.Text("settings.guest_restart_confirm"), small);
+            if (DrawButton(new Rect(panel.x + 20, y + 96, 174, 42), I18n.Text("action.cancel"), true, false, true))
+            {
+                guestResetPending = false;
+            }
+            if (DrawButton(new Rect(panel.x + 206, y + 96, 174, 42),
+                I18n.Text("settings.guest_restart_start"), Game.CanStartNewGuestVillage, false, true))
+            {
+                if (Game.StartNewGuestVillage())
+                {
+                    guestResetPending = false;
+                    CloseSettings();
+                }
+            }
+        }
+
+        /// <summary>Opens the community invitation in the browser when its Discord settings control is pressed.</summary>
+        /// <param name="panel">The settings panel whose footer contains the community control.</param>
+        private void DrawCommunityLink(Rect panel)
+        {
+            var bounds = new Rect(panel.x + 20, panel.yMax - 60, panel.width - 40, 42);
+            if (DrawButton(bounds, "", true, false, true))
+            {
+                Application.OpenURL(CommunityInviteUrl);
+            }
+
+            Color previousColor = GUI.color;
+            GUI.color = VillageWorld.ColorOf("#5865F2");
+            GUI.DrawTexture(new Rect(bounds.x + 12, bounds.y + 5, 32, 32), discordIcon, ScaleMode.ScaleToFit, true);
+            GUI.color = previousColor;
+            DrawLabel(new Rect(bounds.x + 55, bounds.y + 7, bounds.width - 65, 28), I18n.Text("settings.discord_community"), body);
         }
 
         /// <summary>
@@ -1527,6 +1591,7 @@ namespace LittleColony
                 shopIcon,
                 bookIcon,
                 gearIcon,
+                discordIcon,
                 sunIcon,
                 moonIcon,
                 rainIcon

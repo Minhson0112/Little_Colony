@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using UnityEditor;
 using UnityEditor.Build;
@@ -10,7 +11,7 @@ using UnityEngine;
 namespace LittleColony.Editor
 {
     /// <summary>
-    /// Exports WebGL page translations from the shared C# catalog after a successful build.
+    /// Exports WebGL page translations and versions build assets after a successful build.
     /// </summary>
     public sealed class WebLocalizationBuild : IPostprocessBuildWithReport
     {
@@ -42,6 +43,25 @@ namespace LittleColony.Editor
             string output = report.summary.outputPath;
             string directory = Path.HasExtension(output) ? Path.GetDirectoryName(output) : output;
             File.WriteAllText(Path.Combine(directory, "i18n-web.json"), JsonUtility.ToJson(catalog, true), new UTF8Encoding(false));
+            VersionBuildAssets(directory);
+        }
+
+        /// <summary>Changes asset URLs when their content changes so returning browsers load the current game.</summary>
+        /// <param name="directory">The completed WebGL output directory containing index.html and Build assets.</param>
+        public static void VersionBuildAssets(string directory)
+        {
+            string indexPath = Path.Combine(directory, "index.html");
+            string html = File.ReadAllText(indexPath);
+            foreach (string assetPath in Directory.GetFiles(Path.Combine(directory, "Build")))
+            {
+                using var hasher = SHA256.Create();
+                using var stream = File.OpenRead(assetPath);
+                string version = BitConverter.ToString(hasher.ComputeHash(stream), 0, 8)
+                    .Replace("-", "").ToLowerInvariant();
+                string assetUrl = "Build/" + Path.GetFileName(assetPath);
+                html = html.Replace(assetUrl, assetUrl + "?v=" + version);
+            }
+            File.WriteAllText(indexPath, html, new UTF8Encoding(false));
         }
 
         /// <summary>

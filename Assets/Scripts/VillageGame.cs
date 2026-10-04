@@ -816,6 +816,34 @@ namespace LittleColony
             return true;
         }
 
+        /// <summary>Reports whether settings can replace only the active local guest village.</summary>
+        public bool CanStartNewGuestVillage => activeSaveKey == SaveKey
+            && (Cloud == null || (!Cloud.IsActive && !Cloud.IsTransitioning));
+
+        /// <summary>Starts an empty guest village after explicit confirmation and backs up the previous local save.</summary>
+        /// <returns>Whether the guest village was replaced; account villages and transitions are rejected.</returns>
+        public bool StartNewGuestVillage()
+        {
+            if (!CanStartNewGuestVillage)
+            {
+                return false;
+            }
+
+            Save();
+            PlayerPrefs.SetString(SaveKey + ".reset-backup." + Guid.NewGuid().ToString("N"),
+                PlayerPrefs.GetString(SaveKey));
+            State = VillageState.NewGame(Now);
+            selectedId = 0;
+            Placing = null;
+            EditingId = 0;
+            DraftVisible = false;
+            lastClock = Time.realtimeSinceStartupAsDouble;
+            World.ReplaceVillage(State);
+            Save();
+            Notice = I18n.Text("settings.guest_started");
+            return true;
+        }
+
         /// <summary>Dismisses the welcome screen after a cloud village is ready.</summary>
         public void CloseWelcomeScreen()
         {

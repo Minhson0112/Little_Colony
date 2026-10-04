@@ -98,7 +98,7 @@ namespace LittleColony
             roundedTexture = CreateTexture("Welcome rounded panel", RoundedCoverage);
             circleTexture = CreateTexture("Welcome circle", CircleCoverage);
             leafTexture = CreateTexture("Welcome leaf", LeafCoverage);
-            discordTexture = CreateTexture("Welcome Discord mark", DiscordCoverage);
+            discordTexture = CreateDiscordIcon();
             veilTexture = CreateTexture("Welcome headline veil", VeilCoverage);
             Panel = new GUIStyle
             {
@@ -169,6 +169,13 @@ namespace LittleColony
             texture.SetPixels(pixels);
             texture.Apply(false, true);
             return texture;
+        }
+
+        /// <summary>Creates the shared Discord mark used by sign-in and community controls.</summary>
+        /// <returns>A generated white icon mask that the caller must destroy when finished.</returns>
+        public static Texture2D CreateDiscordIcon()
+        {
+            return CreateTexture("Discord mark", DiscordCoverage);
         }
 
         /// <summary>

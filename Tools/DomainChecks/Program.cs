@@ -15,7 +15,7 @@ static class Program
     /// </summary>
     private static void CheckExpansions()
     {
-        var state = VillageState.NewGame(100);
+        var state = ExistingVillage();
         state.acorns = 50000;
         Assert(!state.housingExpansionOwned && !state.gardenExpansionOwned, "New plots start locked");
         Assert(state.PlacementError(BuildingKind.AntHome, -24, 6) == I18n.Source("expansion.locked_ground")
@@ -57,7 +57,7 @@ static class Program
         var restored = Copy(state);
         Assert(restored.Migrate() && restored.housingExpansionOwned && restored.gardenExpansionOwned
             && restored.acorns == state.acorns, "Both purchases and balance survive reload");
-        var freshReload = Copy(VillageState.NewGame(100));
+        var freshReload = Copy(ExistingVillage());
         Assert(freshReload.Migrate() && !freshReload.housingExpansionOwned && !freshReload.gardenExpansionOwned,
             "Reload cannot grant unpaid land");
         for (int side = 0; side < 3; side++)
@@ -107,7 +107,7 @@ static class Program
     /// </summary>
     static VillageState Rich(int xp = 3000)
     {
-        var s = VillageState.NewGame(100);
+        var s = ExistingVillage();
         s.acorns = 10000;
         s.xp = xp;
         s.energy = VillageState.MaxEnergy;
@@ -125,12 +125,52 @@ static class Program
             new JsonSerializerOptions { IncludeFields = true });
     }
 
+    /// <summary>Creates a historical two-building fixture for existing economy and save regression scenarios.</summary>
+    /// <returns>A village representing a previously saved starter layout.</returns>
+    private static VillageState ExistingVillage()
+    {
+        var state = VillageState.NewGame(100);
+        state.buildings.Add(new Building { id = state.nextId++, kind = BuildingKind.AntHome, x = -4, z = 0 });
+        state.buildings.Add(new Building { id = state.nextId++, kind = BuildingKind.Pile, x = 4, z = 0 });
+        return state;
+    }
+
+    /// <summary>Checks empty first entry, persistence, and progression after buying the first home and worksite.</summary>
+    private static void CheckNewVillage()
+    {
+        var state = VillageState.NewGame(100);
+        Assert(state.acorns == 1000 && state.buildings.Count == 0 && state.nextId == 1,
+            "New village has 1,000 acorns and no granted buildings");
+        Assert(state.Level == 1 && state.xp == 0 && state.Capacity(false) == 0 && state.Capacity(true) == 0,
+            "An empty new village has no residents or progression");
+        Assert(state.IsValid() && Copy(state).Migrate() && Copy(state).buildings.Count == 0,
+            "An empty village survives save reload without adding starter buildings");
+        Assert(!state.QuestReady, "Empty village does not auto-complete the first tutorial objective");
+        Assert(state.TryBuild(BuildingKind.AntHome, -4, 0, out _)
+            && state.TryBuild(BuildingKind.Pile, 4, 0, out _),
+            "Starting funds allow the player to buy a home and a worksite");
+        Assert(state.acorns == 1000 - VillageState.Cost(BuildingKind.AntHome) - VillageState.Cost(BuildingKind.Pile)
+            && state.buildings[0].id == 1 && state.buildings[1].id == 2,
+            "First construction charges its price and uses fresh stable identifiers");
+        state.weatherSeed = 419;
+        state.worldTime = 10;
+        Assert(state.StartJob(state.buildings[1].id, 0, out _), "Player-built home enables the first harvest job");
+        state.Advance(1100);
+        Assert(state.Collect(state.buildings[1].id) && state.ClaimQuest(),
+            "An empty start can complete the first tutorial through paid construction");
+        var restored = Copy(state);
+        Assert(restored.Migrate() && restored.acorns == state.acorns && restored.buildings.Count == 2
+            && restored.quest == 1 && restored.xp == state.xp,
+            "Returning guest keeps purchases, currency and tutorial progress");
+    }
+
     /// <summary>
     /// Runs the domain regression scenarios and prints the number of successful checks.
     /// </summary>
     static void Main()
     {
-        var s = VillageState.NewGame(100);
+        CheckNewVillage();
+        var s = ExistingVillage();
         int pile = s.buildings[1].id;
         Assert(s.IsValid() && s.version == 9, "New game and save version");
         Assert(s.energy >= VillageState.JobSeconds[0], "Starter energy supports a short task");
@@ -216,7 +256,7 @@ static class Program
             && reloadedExpansion.buildings[0].x == -26
             && reloadedExpansion.buildings.Exists(b => b.x == 30),
             "Expanded placements survive save reload without changing save format");
-        var oldMapSave = Copy(VillageState.NewGame(100));
+        var oldMapSave = Copy(ExistingVillage());
         Assert(oldMapSave.Migrate() && oldMapSave.buildings[0].x == -4
             && oldMapSave.buildings[1].x == 4 && oldMapSave.acorns == 1000,
             "Original village coordinates and resources remain unchanged");
@@ -257,11 +297,11 @@ static class Program
             "Bee forage has a reward premium");
         Assert(VillageState.JobXp(BuildingKind.Pile, 3, 0) < VillageState.JobXp(BuildingKind.Pile, 1, 0) * 3,
             "Shared work does not triple XP");
-        var recovery = VillageState.NewGame(100);
+        var recovery = ExistingVillage();
         recovery.acorns = 0;
         recovery.HelpVisitor();
         Assert(recovery.acorns >= VillageState.Cost(BuildingKind.SugarCube), "Visitor can rescue a village with zero funds");
-        var old = VillageState.NewGame(100);
+        var old = ExistingVillage();
         old.version = 6;
         old.energy = 50;
         old.acorns = 123;
@@ -280,14 +320,14 @@ static class Program
         Assert(old.ActiveFood.foodEnergy == 300 && old.IsValid(), "Purchased old meal keeps original energy reward");
         old.Advance(20);
         Assert(old.ActiveFood == null && old.energy == 350, "Old meal completes with historical reward");
-        var oldLevel = VillageState.NewGame(100);
+        var oldLevel = ExistingVillage();
         oldLevel.version = 6;
         oldLevel.xp = 126;
         Assert(oldLevel.Migrate()
             && oldLevel.Level == 4
             && oldLevel.XpIntoLevel > 0,
             "Migration keeps a veteran village at its reached level");
-        var oldUpgrade = VillageState.NewGame(100);
+        var oldUpgrade = ExistingVillage();
         oldUpgrade.version = 6;
         oldUpgrade.buildings[0].upgradeRemaining = 20;
         oldUpgrade.buildings[0].upgradeDuration = 25;
@@ -295,11 +335,11 @@ static class Program
             && oldUpgrade.buildings[0].upgradeRemaining == 20
             && oldUpgrade.IsValid(),
             "Old pending upgrade timer remains valid");
-        var v1 = VillageState.NewGame(100);
+        var v1 = ExistingVillage();
         v1.version = 1;
         v1.buildings[0].tier = 0;
         Assert(v1.Migrate() && v1.version == 9 && v1.buildings[0].tier == 1, "Original save migrates through all versions");
-        var fence = VillageState.NewGame(100);
+        var fence = ExistingVillage();
         int fenceMoney = fence.acorns;
         Assert(fence.TryBuild(BuildingKind.Fence, -8, 5, out _)
             && fence.acorns == fenceMoney - VillageState.Cost(BuildingKind.Fence),
@@ -315,7 +355,7 @@ static class Program
         Assert(Copy(fence).Migrate(), "Existing save format accepts added fence kind");
         Assert(rich.IsValid() && Copy(rich).IsValid(), "Long tasks and upgrades survive save validation");
         // Migration preserves purchases, timers, XP and shop access, and is idempotent.
-        var veteran = VillageState.NewGame(100);
+        var veteran = ExistingVillage();
         veteran.version = 7;
         veteran.xp = 110;
         veteran.acorns = 123;
@@ -340,7 +380,7 @@ static class Program
             && veteran.ActiveFood.foodEnergy == 1800,
             "V7 contracts retain all purchased values");
         Assert(Copy(veteran).Migrate() && veteran.Migrate() && veteran.legacyUnlockLevel == 3, "Migration survives reload and repeats");
-        var fresh = VillageState.NewGame(100);
+        var fresh = ExistingVillage();
         fresh.xp = 110;
         Assert(!fresh.IsUnlocked(BuildingKind.BeeHome)
             && fresh.IsUnlocked(BuildingKind.Cookie),
@@ -351,7 +391,7 @@ static class Program
             "Level five opens bees and medium worksite");
         for (int option = 0; option < 3; option++)
         {
-            var online = VillageState.NewGame(100);
+            var online = ExistingVillage();
             online.energy = 0;
             Assert(online.TryBuild(BuildingKind.Cookie, 7, 5, out _), "Long-trip food is affordable at level one");
             online.Advance(40);
@@ -380,7 +420,7 @@ static class Program
             previousRate = rate;
         }
 
-        var cap = VillageState.NewGame(100);
+        var cap = ExistingVillage();
         cap.energy = VillageState.MaxEnergy - 1;
         Assert(cap.TryBuild(BuildingKind.Cookie, 7, 5, out _), "Meal near cap starts");
         cap.Advance(40);
@@ -413,11 +453,11 @@ static class Program
             Assert(decor.TryMove(placed.id, 9, 8, 2, out _) && Copy(decor).Migrate(), "New decor moves and survives save");
         }
 
-        var oldShop = VillageState.NewGame(100);
+        var oldShop = ExistingVillage();
         oldShop.version = 7;
         oldShop.xp = 110;
         Assert(oldShop.Migrate() && !oldShop.IsUnlocked(BuildingKind.AntAcornHome), "Legacy shop access does not bypass new home unlock");
-        var visitorVillage = VillageState.NewGame(100);
+        var visitorVillage = ExistingVillage();
         visitorVillage.acorns = 0;
         Assert(visitorVillage.IsVisitorSpot(-8, 5)
             && visitorVillage.IsVisitorSpot(7, 5),
@@ -432,7 +472,7 @@ static class Program
         Assert(!visitorVillage.IsVisitorSpot(12, 4) && !visitorVillage.IsVisitorSpot(11, -6), "Visitor avoids fixed patio and mower");
         visitorVillage.buildings.Add(new Building { id = visitorVillage.nextId++, kind = BuildingKind.TallGrass, x = 7, z = 5 });
         Assert(!visitorVillage.IsVisitorSpot(7, 5), "Visitor avoids new decoration too");
-        var lionReward = VillageState.NewGame(100);
+        var lionReward = ExistingVillage();
         lionReward.quest = 5;
         int lionCash = lionReward.acorns, lionXp = lionReward.xp;
         lionReward.RewardAntLion();
@@ -866,7 +906,7 @@ static class Program
             "Dynamic species labels translate inside a message");
         Assert(I18n.Translate("0:15:00") == "0:15:00" && I18n.Translate(null) == null,
             "Durations and null messages pass through unchanged");
-        var village = VillageState.NewGame(100);
+        var village = ExistingVillage();
         string saved = JsonSerializer.Serialize(village, new JsonSerializerOptions { IncludeFields = true, IgnoreReadOnlyProperties = true });
         string error = village.PlacementError(BuildingKind.TwigYard, 6, 5);
         Assert(error == I18n.Source("error.unlock_prefix") + "5.", "Domain errors remain canonical in English mode");

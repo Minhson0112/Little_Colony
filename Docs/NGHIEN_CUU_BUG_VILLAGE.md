@@ -1,5 +1,11 @@
 # Bug Village → Lá Nhỏ
 
+## Khởi đầu và cộng đồng — 04/10/2026
+
+Làng mới bắt đầu ở cấp 1 với 1.000 hạt sồi, không cấp sẵn công trình hay cư dân. Người chơi tự mua nhà kiến và điểm làm việc từ cửa hàng; hướng dẫn thu hoạch đầu tiên giải thích bước xây này. Guest tiếp tục tự lưu và tải lại tiến trình trên cùng trình duyệt. Bản lưu hiện có vẫn được giữ nguyên với phiên bản v9. Trong Cài đặt, guest có thể xác nhận bắt đầu làng mới; bản cũ được sao lưu cục bộ trước khi thay thế. Tài khoản và quá trình đồng bộ không được phép dùng thao tác chơi lại guest.
+
+Cài đặt có logo Discord dùng chung với màn hình đăng nhập. Bấm vào mở lời mời cộng đồng `https://discord.gg/chill-station` bằng trình duyệt, độc lập với đăng nhập Discord.
+
 Ngày khảo sát: 01/10/2026. Tên làm việc của bản dựng mới: **Lá Nhỏ / Little Colony**.
 
 ## Game gốc là gì?

@@ -40,3 +40,5 @@ aspect ratios.
 Lanterns use a forced per-pixel point light with a 3.2-unit range and 1.8 maximum intensity. This prevents automatic vertex lighting from interpolating a local lamp across the large ground mesh. The lamp body has its own emissive material, faded with the same day/night amount; the hidden glowing sphere was removed. Light position follows the imported shade bounds, including after relocation and rotation. Owned materials are released on teardown.
 
 Unity Play Mode checks cover night emission, bounded light range and render mode, day shutdown, and relocation. `Docs/lantern-night-check.png` is a rendered Unity runtime check at night.
+
+WebGL verification: Chrome at 1280 × 720, guest test village at level 2, natural day/rain/night cycle. The lamp stayed off during day and rain, then lit its shade and a small pool of grass at night without lighting the whole map. Browser console had no warnings or errors. Screenshot: `Docs/lantern-webgl-night-check.png`. Production index was verified against the exact deployed build after CloudFront invalidation completed.

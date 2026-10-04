@@ -1,4 +1,7 @@
 using UnityEngine;
+#if UNITY_WEBGL && !UNITY_EDITOR
+using System.Runtime.InteropServices;
+#endif
 
 namespace LittleColony
 {
@@ -87,12 +90,38 @@ namespace LittleColony
         }
         private int shopPage;
         private readonly Vector2[] shopScroll = new Vector2[5];
+        private readonly DragScrollView shopDrag = new DragScrollView();
+        private int dragShopPage = -1;
         private Color ink = VillageWorld.ColorOf("#304639");
         private Color muted = VillageWorld.ColorOf("#78816C");
         private float Scale => Mathf.Min(Screen.width / 1280f, Screen.height / 720f);
         private float W => Screen.width / Scale;
         private float H => Screen.height / Scale;
-        private Rect Inspector => new Rect(W - 308, 200, 284, 405);
+#if UNITY_WEBGL && !UNITY_EDITOR
+        /// <summary>Reads the canvas pixel density used to keep touch targets sized in browser pixels.</summary>
+        [DllImport("__Internal")]
+        private static extern float LittleColonyCanvasPixelRatio();
+#endif
+        /// <summary>Gets rendering pixels per browser pixel for physical touch target sizing.</summary>
+        private float ScreenPixelRatio
+        {
+            get
+            {
+#if UNITY_WEBGL && !UNITY_EDITOR
+                return Mathf.Max(1, LittleColonyCanvasPixelRatio());
+#else
+                return 1;
+#endif
+            }
+        }
+        private float InspectorScale => Mathf.Max(Scale, Mathf.Min(ScreenPixelRatio, Screen.width / 310f, Screen.height / 460f));
+        private float InspectorCloseSize => Mathf.Max(48, 48 * ScreenPixelRatio / InspectorScale);
+        private float InspectorHeaderInset => Mathf.Max(20, InspectorCloseSize - 36);
+        private Rect InspectorLayout => new Rect(Screen.width / InspectorScale - 298,
+            Scale < ScreenPixelRatio ? Mathf.Max(8, (Screen.height / InspectorScale - 405 - InspectorHeaderInset) / 2) : 200,
+            284, 405 + InspectorHeaderInset);
+        private Rect Inspector => new Rect(InspectorLayout.position * (InspectorScale / Scale),
+            InspectorLayout.size * (InspectorScale / Scale));
         private Rect Journal => new Rect(W - 284, 201, 260, journal ? 200 : 0);
         private Rect ShopPanel => new Rect((W - 925) / 2,
             H - (shopPage <= 2 ? 505 : shopPage == 4 ? 416 : 357),
@@ -654,7 +683,7 @@ namespace LittleColony
             bool clicked = GUI.Button(r, I18n.Translate(text), button);
             GUI.enabled = old;
             GUI.color = prev;
-            return clicked;
+            return clicked && !shopDrag.SuppressClicks;
         }
 
         /// <summary>
@@ -885,7 +914,9 @@ namespace LittleColony
 
                 if (Game.Selected != null && !shopOpen && !journal && !settingsOpen)
                 {
+                    GUI.matrix = Matrix4x4.Scale(Vector3.one * InspectorScale);
                     DrawSelectionPanel();
+                    GUI.matrix = Matrix4x4.Scale(Vector3.one * Scale);
                 }
             }
 
@@ -915,6 +946,20 @@ namespace LittleColony
             DrawSettingsPanel();
             GUI.enabled = previousEnabled;
             GUI.matrix = Matrix4x4.identity;
+        }
+
+        /// <summary>Updates drag scrolling once per frame and releases capture when the list changes.</summary>
+        private void Update()
+        {
+            if (!shopOpen || settingsOpen || shopPage == 4 || Game == null
+                || Game.IsWelcomeScreenOpen || Game.Placing.HasValue || dragShopPage != shopPage)
+            {
+                shopDrag.Cancel();
+                dragShopPage = shopPage;
+                return;
+            }
+
+            shopScroll[shopPage] = shopDrag.UpdateInput(shopScroll[shopPage], Scale);
         }
 
         /// <summary>
@@ -1229,7 +1274,9 @@ namespace LittleColony
             float stride = grid ? contentWidth / columns : 224;
             float cardWidth = stride - 8, start = grid || items.Length >= 6 ? 4 : (contentWidth - items.Length * stride) / 2;
             float contentHeight = grid ? Mathf.CeilToInt(items.Length / (float)columns) * 190 + 4 : 234;
-            shopScroll[shopPage] = GUI.BeginScrollView(new Rect(x + 10, y + 72, width - 20, panel.height - 80),
+            Rect viewport = new Rect(x + 10, y + 72, width - 20, panel.height - 80);
+            shopDrag.Configure(viewport, new Vector2(contentWidth, contentHeight));
+            shopScroll[shopPage] = GUI.BeginScrollView(viewport,
                 shopScroll[shopPage],
                 new Rect(0, 0, contentWidth, contentHeight));
             for (int i = 0; i < items.Length; i++)
@@ -1414,18 +1461,23 @@ namespace LittleColony
         void DrawSelectionPanel()
         {
             var b = Game.Selected;
-            var r = Inspector;
+            var r = InspectorLayout;
             DrawBox(r, hudFrame);
             DrawBox(new Rect(r.x + 5, r.y + 5, r.width - 10, r.height - 10), paper, false);
-            DrawLabel(new Rect(r.x + 17, r.y + 14, 210, 18),
+            float closeSize = InspectorCloseSize;
+            DrawLabel(new Rect(r.x + 17, r.y + 22, r.width - closeSize - 38, 18),
                 VillageState.IsHome(b.kind) ? I18n.Source("inspector.home_heading") : I18n.Source("inspector.garden_heading"),
                 tiny,
                 muted);
-            if (DrawButton(new Rect(r.xMax - 37, r.y + 9, 26, 26), "×", true, false, true))
+            if (DrawInspectorClose(new Rect(r.xMax - closeSize - 9, r.y + 7, closeSize, closeSize)))
             {
                 Game.Cancel();
                 return;
             }
+
+            // Reserve a taller header while retaining the existing body and footer positions.
+            r.y += InspectorHeaderInset;
+            r.height -= InspectorHeaderInset;
 
             DrawBox(new Rect(r.x + 14, r.y + 43, 256, 93), sage, false);
             GUI.DrawTexture(new Rect(r.x + 13, r.y + 35, 110, 106), Game.World.Thumbnail(b.kind, b.tier), ScaleMode.ScaleToFit, true);
@@ -1564,6 +1616,16 @@ namespace LittleColony
                     body,
                     muted);
             }
+        }
+
+        /// <summary>Draws a readable close glyph inside the inspector's physical touch target.</summary>
+        private bool DrawInspectorClose(Rect bounds)
+        {
+            int previousFontSize = button.fontSize;
+            button.fontSize = Mathf.Max(previousFontSize, Mathf.RoundToInt(28 * ScreenPixelRatio / InspectorScale));
+            bool clicked = DrawButton(bounds, "×", true, false, true);
+            button.fontSize = previousFontSize;
+            return clicked;
         }
 
         /// <summary>

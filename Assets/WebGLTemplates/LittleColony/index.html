@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Little Colony</title>
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#c9d4b5;font-family:system-ui,sans-serif;color:#293b28}
+    #game{width:100%;height:100%;position:relative}canvas{display:block;width:100%;height:100%;outline:none;touch-action:none}
+    #loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#edf0df;z-index:2}
+    .card{width:min(420px,85vw);text-align:center}.eyebrow{font-size:11px;letter-spacing:3px;font-weight:700}h1{font-size:64px;letter-spacing:-3px;margin:12px 0}p{font-size:15px;line-height:1.8;color:#61705b}
+    progress{width:100%;height:7px;accent-color:#688448;border:0;margin:25px 0 10px}#error{color:#8b362b;white-space:pre-wrap}
+    #help{position:absolute;bottom:1px;left:0;right:0;text-align:center;font-size:10px;pointer-events:none;color:#425b3b}
+    @media(max-width:600px) and (orientation:portrait){#help{bottom:8px;background:#f5efdd;padding:6px;font-size:12px}}
+  </style>
+</head>
+<body>
+  <main id="game">
+    <canvas id="unity-canvas" tabindex="0"></canvas>
+    <div id="loading">
+      <div class="card">
+        <div class="eyebrow">LITTLE COLONY • UNITY WEBGL</div>
+        <h1 data-i18n="web.heading"></h1>
+        <p><span data-i18n="web.tagline"></span><br><span data-i18n="web.welcome"></span></p>
+        <progress id="progress" value="0" max="1"></progress>
+        <p id="status" data-i18n="web.loading"></p>
+        <p id="error" role="alert"></p>
+      </div>
+    </div>
+  </main>
+  <script>
+    const canvas = document.getElementById('unity-canvas');
+    const languageKey = 'little-colony.language';
+    let language = 'en';
+    let translations = {};
+
+    /** Returns a page label from the catalog exported by Unity. */
+    function text(key) {
+      return translations[key]?.[language] ?? key;
+    }
+
+    /** Updates visible page labels and accessibility metadata without reloading the game. */
+    function applyLanguage() {
+      document.documentElement.lang = language;
+      document.title = text('web.title');
+      canvas.setAttribute('aria-label', text('web.canvas_label'));
+      document.querySelectorAll('[data-i18n]').forEach(element => {
+        element.textContent = text(element.dataset.i18n);
+      });
+    }
+
+    window.LittleColonyI18n = {
+      /** Remembers the Unity selection so the next loading page uses the same language. */
+      setLanguage(value) {
+        language = value === 0 ? 'vi' : 'en';
+        try {
+          localStorage.setItem(languageKey, language);
+        } catch (error) {
+          // Unity still persists the setting when browser page storage is unavailable.
+        }
+        applyLanguage();
+      }
+    };
+
+    /** Displays a loading failure while retaining the selected page language. */
+    function fail(error) {
+      const status = document.getElementById('status');
+      status.dataset.i18n = 'web.failed';
+      status.textContent = translations['web.failed'] ? text('web.failed') : 'Could not load the game.';
+      document.getElementById('error').textContent = String(error);
+    }
+
+    /** Loads the shared page catalog before starting Unity. */
+    async function startGame() {
+      const response = await fetch('i18n-web.json', { cache: 'no-cache' });
+      if (!response.ok) {
+        throw new Error('Translation catalog could not be loaded (' + response.status + ').');
+      }
+      const catalog = await response.json();
+      translations = Object.fromEntries(catalog.entries.map(entry => [entry.key, entry]));
+      try {
+        language = localStorage.getItem(languageKey) === 'vi' ? 'vi' : 'en';
+      } catch (error) {
+        language = 'en';
+      }
+      applyLanguage();
+
+      const config = {
+        dataUrl: 'Build/{{{ DATA_FILENAME }}}',
+        frameworkUrl: 'Build/{{{ FRAMEWORK_FILENAME }}}',
+        codeUrl: 'Build/{{{ CODE_FILENAME }}}',
+        streamingAssetsUrl: 'StreamingAssets',
+        companyName: 'LittleColony',
+        productName: 'Little Colony',
+        productVersion: '0.2.0',
+        autoSyncPersistentDataPath: true
+      };
+      const script = document.createElement('script');
+      script.src = 'Build/{{{ LOADER_FILENAME }}}';
+      script.onload = () => createUnityInstance(canvas, config, progress => {
+        document.getElementById('progress').value = progress;
+      }).then(instance => {
+        window.unityInstance = instance;
+        document.getElementById('loading').style.display = 'none';
+        canvas.focus();
+      }).catch(fail);
+      script.onerror = () => fail(text('web.unity_load_failed'));
+      document.body.appendChild(script);
+    }
+
+    startGame().catch(fail);
+  </script>
+</body>
+</html>

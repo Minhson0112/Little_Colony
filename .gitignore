@@ -1,0 +1,47 @@
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+Builds/
+.vs/
+*.csproj
+*.sln
+*.slnx
+*.user
+!Tools/DomainChecks/DomainChecks.csproj
+Tools/DomainChecks/bin/
+Tools/DomainChecks/obj/
+Tools/editor-request.txt
+!Backend/**/*.csproj
+!Backend/*.sln
+!Backend/*.slnx
+Backend/**/bin/
+Backend/**/obj/
+Backend/.env
+Backend/.env.*
+!Backend/.env.example
+
+# Local agent indexes and workspace state.
+.codegraph/
+.codex/
+.vscode/mcp.json
+.DS_Store
+
+# Blender automatic backups; keep the original .blend sources.
+*.blend1
+*.blend2
+
+# Local credentials and private keys.
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem
+*.key
+
+# Generated Python bytecode.
+__pycache__/
+*.py[cod]
+

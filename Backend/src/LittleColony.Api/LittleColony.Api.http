@@ -1,0 +1,21 @@
+@baseUrl = http://localhost:5100
+
+### API process health: 200 when the API is running.
+GET {{baseUrl}}/health/live
+
+### Database readiness: 200 when DynamoDB responds, otherwise 503.
+GET {{baseUrl}}/health/ready
+
+### Allow the existing local WebGL origin.
+OPTIONS {{baseUrl}}/health/live
+Origin: http://localhost:8080
+Access-Control-Request-Method: GET
+
+### Anonymous session metadata. facebookEnabled is false until secrets are configured.
+GET {{baseUrl}}/api/session
+
+### Requires a browser session; anonymous requests return 401.
+GET {{baseUrl}}/api/save
+
+### Open in the browser for real OAuth; returns 503 if credentials are absent.
+GET {{baseUrl}}/auth/facebook

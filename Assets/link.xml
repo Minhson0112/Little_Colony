@@ -1,0 +1,9 @@
+<linker>
+  <!-- CreatePrimitive constructs these collider types natively. Keep their managed
+       bindings even though the visual environment immediately removes colliders. -->
+  <assembly fullname="UnityEngine.PhysicsModule">
+    <type fullname="UnityEngine.CapsuleCollider" preserve="all" />
+    <type fullname="UnityEngine.BoxCollider" preserve="all" />
+    <type fullname="UnityEngine.SphereCollider" preserve="all" />
+  </assembly>
+</linker>

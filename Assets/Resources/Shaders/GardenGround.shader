@@ -16,8 +16,11 @@ Shader "LittleColony/GardenGround"
         void surf(Input IN,inout SurfaceOutputStandard o)
         {
             float2 p=IN.worldPos.xz;
-            float n=noise(p*.55)*.72+noise(p*3)*.20+noise(p*24)*.08;
+            float n=smoothstep(.18,.85,noise(p*.38))*.72+noise(p*2.4)*.22+noise(p*24)*.06;
             o.Albedo=lerp(_Color.rgb,_Patch.rgb,n);
+            // Slow, broad leaf shadows give the lawn depth without extra shadow-casting lights.
+            float canopy=noise(p*.7+float2(sin(_Time.y*.25),cos(_Time.y*.21))*.12);
+            o.Albedo*=lerp(.88,1.04,smoothstep(.28,.7,canopy));
             float locked=(p.x<0?_ExpansionLocks.x:_ExpansionLocks.y)
                 *step(_ExpansionLocks.z,abs(p.x))*step(abs(p.x),_ExpansionLocks.w)
                 *step(abs(p.y),_ExpansionDepth);

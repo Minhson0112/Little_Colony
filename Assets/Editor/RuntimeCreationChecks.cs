@@ -95,6 +95,7 @@ namespace LittleColony.Editor
                     VerifyWorkSiteFireflies();
                     VerifyVillageReplacement();
                     VerifyGardenCollectionAssets();
+                    VerifyGardenAtmosphere();
                 }
                 catch (Exception error)
                 {
@@ -108,7 +109,7 @@ namespace LittleColony.Editor
                 string errors = SessionState.GetString(ErrorsKey, "");
                 bool passed = string.IsNullOrEmpty(errors);
                 string report = passed
-                    ? "PASS: Unity Play Mode creation, worksite fireflies, account village replacement, five garden decoration assets, 60 animation frames, tint restoration, and teardown."
+                    ? "PASS: Unity Play Mode creation, worksite fireflies, account village replacement, five garden decoration assets, garden pollen/night/rain behavior, 60 animation frames, tint restoration, and teardown."
                     : "FAIL:\n" + errors;
                 Directory.CreateDirectory("Logs");
                 File.WriteAllText("Logs/runtime-creation-result.txt", report);
@@ -300,6 +301,42 @@ namespace LittleColony.Editor
             {
                 CaptureError(error.ToString(), "", LogType.Exception);
                 Stop();
+            }
+        }
+
+        /// <summary>Checks that ambient life moves, responds to weather, and adds no gameplay colliders.</summary>
+        private static void VerifyGardenAtmosphere()
+        {
+            var atmosphere = world.GetComponent<GardenAtmosphere>();
+            var particles = world.transform.Find("Drifting garden life");
+            var flowers = world.transform.Find("Meadow wildflowers");
+            if (atmosphere == null || particles == null || flowers == null
+                || particles.GetComponent<Collider>() != null || flowers.GetComponent<Collider>() != null)
+            {
+                throw new Exception("Ambient life must exist without obstructing gameplay placement.");
+            }
+
+            Mesh particleMesh = particles.GetComponent<MeshFilter>().sharedMesh;
+            atmosphere.Animate(world.ViewCamera, 0, 1, false);
+            Vector3 original = particleMesh.vertices[0];
+            Color daylightColor = particleMesh.colors[0];
+            atmosphere.Animate(world.ViewCamera, 3, .22f, false);
+            if (particleMesh.vertexCount != 192 || particleMesh.vertices[0] == original
+                || particleMesh.colors[0] == daylightColor || !particles.gameObject.activeSelf)
+            {
+                throw new Exception("Ambient particles must drift and change their glow at night.");
+            }
+
+            atmosphere.Animate(world.ViewCamera, 4, 1, true);
+            if (particles.gameObject.activeSelf)
+            {
+                throw new Exception("Pollen and fireflies must shelter during rain.");
+            }
+
+            atmosphere.Animate(world.ViewCamera, 5, 1, false);
+            if (!particles.gameObject.activeSelf || flowers.GetComponent<MeshFilter>().sharedMesh.vertexCount == 0)
+            {
+                throw new Exception("Ambient life must resume when rain ends, with meadow blossoms retained.");
             }
         }
 

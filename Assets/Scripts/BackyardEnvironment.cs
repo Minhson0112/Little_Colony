@@ -15,9 +15,12 @@ namespace LittleColony
         private VillageWorld world;
         private Material groundMaterial;
         private Material lawnGrassMaterial;
+        private Mesh meadowFlowerMesh;
+        private Material meadowFlowerMaterial;
         private readonly List<Transform> floatingLeaves = new List<Transform>();
         private readonly List<Transform> butterflies = new List<Transform>();
         private readonly List<Transform> swayingPlants = new List<Transform>();
+        private readonly List<Quaternion> plantRestRotations = new List<Quaternion>();
         private System.Random rng = new System.Random(21);
         /// <summary>
         /// Returns the stream center at the supplied world Z coordinate.
@@ -103,8 +106,8 @@ namespace LittleColony
             expansionTint = new MaterialPropertyBlock();
             var grass = new Material(Resources.Load<Shader>("Shaders/GardenGround"));
             groundMaterial = grass;
-            grass.SetColor("_Color", VillageWorld.ColorOf("#70944D"));
-            grass.SetColor("_Patch", VillageWorld.ColorOf("#AABD70"));
+            grass.SetColor("_Color", VillageWorld.ColorOf("#61944D"));
+            grass.SetColor("_Patch", VillageWorld.ColorOf("#AAC578"));
             CreateTerrainStrip("West garden lawn", z => -70, z => StreamX(z) - 1.05f, .16f, grass);
             CreateTerrainStrip("East garden lawn", z => StreamX(z) + 1.05f, z => 70, .16f, grass);
             CreateTerrainStrip("Damp creek bed", z => StreamX(z) - 1.1f, z => StreamX(z) + 1.1f, -.04f, world.Material("#657B59"));
@@ -150,7 +153,13 @@ namespace LittleColony
             CreateGardenDivider();
             CreateVillageDivider();
             CreateGrass();
-            for (int i = 0; i < 4; i++)
+            CreateMeadowFlowers();
+            foreach (Transform plant in swayingPlants)
+            {
+                plantRestRotations.Add(plant.localRotation);
+            }
+
+            for (int i = 0; i < 6; i++)
             {
                 var pivot = new GameObject("Garden butterfly").transform;
                 pivot.SetParent(transform);
@@ -159,8 +168,8 @@ namespace LittleColony
                     var wing = CreateSceneryPrimitive("Butterfly wing",
                         PrimitiveType.Sphere,
                         Vector3.zero,
-                        new Vector3(.16f, .022f, .22f),
-                        i % 2 == 0 ? "#F4D884" : "#E4B4BD");
+                        new Vector3(.23f, .025f, .28f),
+                        i % 3 == 0 ? "#F5CF68" : i % 3 == 1 ? "#EBA1C2" : "#B1CBED");
                     wing.transform.SetParent(pivot);
                     wing.transform.localPosition = new Vector3(side * .12f, 0, 0);
                 }
@@ -821,7 +830,7 @@ namespace LittleColony
             for (int i = 0; i < 4700; i++)
             {
                 float x = Random(-PerimeterHalfWidth, PerimeterHalfWidth), z = Random(-15, 13);
-                if (Mathf.Abs(x - StreamX(z)) < 1.25f || (Mathf.Abs(x) < 8.8f && Mathf.Abs(z) < 4.7f && rng.NextDouble() < .92))
+                if (Mathf.Abs(x - StreamX(z)) < 1.25f || (Mathf.Abs(x) < 8.8f && Mathf.Abs(z) < 4.7f && rng.NextDouble() < .70))
                 {
                     continue;
                 }
@@ -866,7 +875,83 @@ namespace LittleColony
         }
 
         /// <summary>
-        /// Animates floating leaves, butterflies, and swaying plants each frame.
+        /// Builds small meadow flowers as one mesh without colliders or additional placement rules.
+        /// </summary>
+        private void CreateMeadowFlowers()
+        {
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            var colors = new List<Color>();
+            var coordinates = new List<Vector2>();
+            var flowerRandom = new System.Random(8714);
+            Color[] palette = { VillageWorld.ColorOf("#FFF1BC"), VillageWorld.ColorOf("#EDB0CF"), VillageWorld.ColorOf("#BECCF4") };
+            for (int i = 0; i < 110; i++)
+            {
+                float x = (float)flowerRandom.NextDouble() * 34 - 17;
+                float z = (float)flowerRandom.NextDouble() * 23 - 11;
+                if (Mathf.Abs(x - StreamX(z)) < 1.45f || Mathf.Abs(z) < .65f)
+                {
+                    continue;
+                }
+
+                float height = .18f + (float)flowerRandom.NextDouble() * .16f;
+                Vector3 center = new Vector3(x, .16f + height, z);
+                int stem = vertices.Count;
+                vertices.Add(new Vector3(x - .02f, .16f, z));
+                vertices.Add(new Vector3(x + .02f, .16f, z));
+                vertices.Add(center);
+                triangles.Add(stem);
+                triangles.Add(stem + 2);
+                triangles.Add(stem + 1);
+                Color leafColor = VillageWorld.ColorOf("#6F964C");
+                colors.Add(leafColor);
+                colors.Add(leafColor);
+                colors.Add(leafColor);
+                coordinates.Add(Vector2.zero);
+                coordinates.Add(Vector2.zero);
+                coordinates.Add(Vector2.up);
+                for (int petal = 0; petal < 5; petal++)
+                {
+                    float angle = petal * Mathf.PI * .4f + i;
+                    Vector3 direction = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle));
+                    Vector3 side = new Vector3(-direction.z, 0, direction.x) * .055f;
+                    int first = vertices.Count;
+                    vertices.Add(center);
+                    vertices.Add(center + direction * .18f - side);
+                    vertices.Add(center + direction * .18f + side);
+                    triangles.Add(first);
+                    triangles.Add(first + 2);
+                    triangles.Add(first + 1);
+                    colors.Add(VillageWorld.ColorOf("#E9B957"));
+                    colors.Add(palette[i % palette.Length]);
+                    colors.Add(palette[i % palette.Length]);
+                    coordinates.Add(Vector2.up);
+                    coordinates.Add(Vector2.up);
+                    coordinates.Add(Vector2.up);
+                }
+            }
+
+            var flowerMesh = new Mesh { name = "Batched meadow blossoms" };
+            meadowFlowerMesh = flowerMesh;
+            flowerMesh.SetVertices(vertices);
+            flowerMesh.SetTriangles(triangles, 0);
+            flowerMesh.SetColors(colors);
+            flowerMesh.SetUVs(0, coordinates);
+            flowerMesh.RecalculateNormals();
+            flowerMesh.RecalculateBounds();
+            var flowers = new GameObject("Meadow wildflowers", typeof(MeshFilter), typeof(MeshRenderer));
+            flowers.transform.SetParent(transform);
+            flowers.GetComponent<MeshFilter>().sharedMesh = flowerMesh;
+            var material = new Material(Resources.Load<Shader>("Shaders/GardenGrass"));
+            meadowFlowerMaterial = material;
+            material.SetColor("_Color", Color.white);
+            var renderer = flowers.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        /// <summary>
+        /// Animates floating leaves, butterflies, and plants around their original authored rotations.
         /// </summary>
         void Update()
         {
@@ -898,7 +983,22 @@ namespace LittleColony
             for (int i = 0; i < swayingPlants.Count; i++)
             {
                 var p = swayingPlants[i];
-                p.localRotation = Quaternion.Euler(Mathf.Sin(t * 1.1f + i) * 2.5f, 0, Mathf.Cos(t * .9f + i) * 3);
+                p.localRotation = plantRestRotations[i]
+                    * Quaternion.Euler(Mathf.Sin(t * 1.1f + i) * 2.5f, 0, Mathf.Cos(t * .9f + i) * 3);
+            }
+        }
+
+        /// <summary>Releases the generated meadow flower resources when this environment is destroyed.</summary>
+        private void OnDestroy()
+        {
+            if (meadowFlowerMesh != null)
+            {
+                Destroy(meadowFlowerMesh);
+            }
+
+            if (meadowFlowerMaterial != null)
+            {
+                Destroy(meadowFlowerMaterial);
             }
         }
     }

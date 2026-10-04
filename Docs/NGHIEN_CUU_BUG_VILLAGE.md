@@ -167,3 +167,7 @@ liên kết tài khoản. Phiên hết hạn đăng nhập lại đúng nhà cun
 ## Năm công trình trang trí vườn — 04/10/2026
 
 Bổ sung vào nhóm Decorations: chậu hoa gỗ (cấp 3, 95 acorn), nhà chim (cấp 4, 140), chuông gió (cấp 5, 190), đài phun lá (cấp 7, 320), xe hoa (cấp 9, 450). Đây là thiết kế mới, không sao chép công trình từ game gốc. Các công trình chỉ trang trí, không tăng sức chứa hay tạo tài nguyên; dùng quy tắc đặt, xoay và di chuyển hiện có. ID enum mới nối tiếp 30–34, giữ save v9 và ID cũ; khóa cấp độ không được bỏ qua bởi legacyUnlockLevel. Tên/mô tả có cả tiếng Anh và tiếng Việt. DomainChecks kiểm tra khóa cấp, chi phí, đặt/di chuyển và lưu/tải cho từng mẫu.
+
+## Sức sống khu vườn — 04/10/2026
+
+Thêm hoa dại gộp mesh, cỏ có chuyển sắc gốc/ngọn và vùng màu nền hữu cơ; tăng chuyển động cỏ ở khu trung tâm nhưng giữ suối/lối đá thoáng. Ánh sáng ấm, mặt suối có bờ nông và tia lấp lánh. Bướm pastel lớn hơn; cây lay quanh hướng tạo hình gốc. Hạt phấn ban ngày chuyển thành đom đóm nhấp nháy khi tối, ẩn lúc mưa. Đây là thiết kế mới bằng code, không dùng thêm tài sản bên thứ ba. Không đổi collider, luật đặt, kinh tế hay save. Chi tiết kiểm tra và giới hạn tài nguyên ở `Docs/GARDEN_VISUALS.md`; ảnh kiểm tra là gameplay Unity WebGL, không phải Blender.

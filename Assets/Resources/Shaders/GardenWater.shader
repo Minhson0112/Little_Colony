@@ -19,9 +19,12 @@ Shader "LittleColony/FlowingWater"
             float cross=sin(p.x*16+sin(p.y*3+t*1.8)*2);
             float light=smoothstep(.80,1,ripple)*smoothstep(.2,1,cross);
             float broad=.5+.5*sin(p.y*1.8+t*.6+p.x*3);
-            o.Albedo=lerp(_Color.rgb,_Shallow.rgb,.25+broad*.36)+light*.24;
-            o.Emission=light*.025;
-            o.Smoothness=.65;o.Metallic=.10;o.Alpha=1;
+            float center=sin(p.y*.46)*.28+sin(p.y*.91)*.10;
+            float bank=smoothstep(.45,.97,abs(p.x-center));
+            float glint=pow(saturate(sin(p.y*31+t*2.1)*sin(p.x*37-t*.8)),20);
+            o.Albedo=lerp(_Color.rgb,_Shallow.rgb,.18+broad*.22+bank*.34)+light*.20+glint*.24;
+            o.Emission=light*.018+glint*.035;
+            o.Smoothness=.78;o.Metallic=.06;o.Alpha=1;
         }
         ENDCG
     }

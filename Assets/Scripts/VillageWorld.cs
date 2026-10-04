@@ -50,6 +50,7 @@ namespace LittleColony
         private readonly List<Building> antJobs = new List<Building>();
         private readonly List<Building> beeJobs = new List<Building>();
         private Light sun;
+        private GardenAtmosphere atmosphere;
         private Mesh rainMesh;
         private GameObject rainObject;
         private readonly List<Vector3> rainVertices = new List<Vector3>();
@@ -625,6 +626,8 @@ namespace LittleColony
             QualitySettings.shadowDistance = 65;
             CreateRain();
             gameObject.AddComponent<BackyardEnvironment>().Create(this);
+            atmosphere = gameObject.AddComponent<GardenAtmosphere>();
+            atmosphere.Initialize();
             marker = CreateOutline("Placement footprint", ColorOf("#E6D985"));
             selection = CreateOutline("Selected building", ColorOf("#FAE6A4"));
             ghostMaterial = new Material(Resources.Load<Shader>("Shaders/GardenGhost"));
@@ -686,14 +689,15 @@ namespace LittleColony
             float day = ColonyClimate.Daylight(state.worldTime);
             float rain = state.IsRaining ? 1 : 0;
             IsShelterWeather = state.IsNight || state.IsRaining;
-            sun.intensity = Mathf.Lerp(.23f, .98f, day) * (rain > 0 ? .63f : 1f);
-            sun.color = Color.Lerp(ColorOf("#9DB4CF"), ColorOf("#FFE9BC"), day);
+            sun.intensity = Mathf.Lerp(.30f, 1.03f, day) * (rain > 0 ? .68f : 1f);
+            sun.color = Color.Lerp(ColorOf("#ABC9E9"), ColorOf("#FFF1CE"), day);
             sun.transform.rotation = Quaternion.Euler(Mathf.Lerp(18, 58, day), -32 + Mathf.Sin((float)state.worldTime * .04f) * 20, 0);
-            RenderSettings.ambientSkyColor = Color.Lerp(ColorOf("#405974"), ColorOf("#B9C9C9"), day) * (rain > 0 ? .78f : 1f);
-            RenderSettings.ambientEquatorColor = Color.Lerp(ColorOf("#4B5D60"), ColorOf("#8A9570"), day) * (rain > 0 ? .80f : 1f);
+            RenderSettings.ambientSkyColor = Color.Lerp(ColorOf("#5D799B"), ColorOf("#C3DCE4"), day) * (rain > 0 ? .82f : 1f);
+            RenderSettings.ambientEquatorColor = Color.Lerp(ColorOf("#647B79"), ColorOf("#9CAC83"), day) * (rain > 0 ? .84f : 1f);
             RenderSettings.ambientGroundColor = Color.Lerp(ColorOf("#34444A"), ColorOf("#586448"), day);
             ViewCamera.backgroundColor = Color.Lerp(ColorOf("#526877"), ColorOf("#D2E0C7"), day);
             rainObject.SetActive(state.IsRaining);
+            atmosphere.Animate(ViewCamera, time, day, state.IsRaining);
             float glow = Mathf.Clamp01((.58f - day) * 3.2f);
             foreach (var light in lanternLights.Values)
             {

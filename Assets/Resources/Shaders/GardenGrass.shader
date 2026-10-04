@@ -1,6 +1,6 @@
 Shader "LittleColony/SwayingGrass"
 {
-    Properties { _Color("Grass",Color)=(.52,.65,.31,1) }
+    Properties { _Color("Grass",Color)=(.52,.65,.31,1) _MainTex("Blade coordinates",2D)="white"{} }
     SubShader
     {
         Tags { "RenderType"="Opaque" }
@@ -11,7 +11,7 @@ Shader "LittleColony/SwayingGrass"
         fixed4 _Color;
         float4 _ExpansionLocks;
         float _ExpansionDepth;
-        struct Input {float4 color:COLOR;float3 worldPos;};
+        struct Input {float4 color:COLOR;float3 worldPos;float2 uv_MainTex;};
         void vert(inout appdata_full v)
         {
             float wind=sin(v.vertex.x*.9+v.vertex.z*1.4+_Time.y*1.7);
@@ -20,7 +20,7 @@ Shader "LittleColony/SwayingGrass"
         }
         void surf(Input IN,inout SurfaceOutputStandard o)
         {
-            o.Albedo=_Color.rgb*IN.color.rgb;
+            o.Albedo=_Color.rgb*IN.color.rgb*lerp(.72,1.18,IN.uv_MainTex.y);
             float2 p=IN.worldPos.xz;
             float locked=(p.x<0?_ExpansionLocks.x:_ExpansionLocks.y)
                 *step(_ExpansionLocks.z,abs(p.x))*step(abs(p.x),_ExpansionLocks.w)

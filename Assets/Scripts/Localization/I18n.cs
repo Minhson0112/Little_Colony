@@ -23,6 +23,12 @@ namespace LittleColony
     {
         private static readonly Dictionary<string, Translation> Translations = new Dictionary<string, Translation>
         {
+            { "popup.ok", new Translation("Đã hiểu", "Got it") },
+            { "popup.action_title", new Translation("Chưa thể thực hiện", "Action unavailable") },
+            { "popup.energy_title", new Translation("Không đủ năng lượng", "Not enough energy") },
+            { "popup.energy", new Translation("Đàn kiến đã hết năng lượng. Hãy mở Cửa hàng → Thức ăn, mua và đặt thức ăn để đàn tiếp tục làm việc.", "Your residents have run out of energy. Open Shop → Food, then buy and place food so they can work again.") },
+            { "popup.money_title", new Translation("Không đủ xu", "Not enough acorns") },
+            { "popup.money", new Translation("Cần {0} xu, bạn có {1} xu. Còn thiếu {2} xu.\n\nThu hoạch hoặc giúp bọ rùa để kiếm thêm.", "Costs {0} acorns; you have {1}. You need {2} more.\n\nHarvest or help a ladybug to earn more.") },
             { "login.brand", new Translation("LÁ NHỎ", "LITTLE COLONY") },
             { "login.hero_title", new Translation("Một thế giới nhỏ.\nMột chốn bình yên.", "A little world.\nA place to grow.") },
             { "login.hero_description", new Translation("Dựng một ngôi làng. Kết bạn với đàn côn trùng.\nGieo những điều tốt lành.", "Build a village. Make tiny friends.\nLet good things grow.") },

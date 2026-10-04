@@ -55,6 +55,27 @@ namespace LittleColony
         private bool journal;
         private bool shopOpen;
         private bool settingsOpen;
+        private string notificationTitle;
+        private string notificationMessage;
+        private int notificationClosedFrame = -1;
+
+        /// <summary>Blocks gameplay through the frame that dismisses a notification.</summary>
+        public bool IsNotificationOpen => notificationMessage != null || notificationClosedFrame == Time.frameCount;
+
+        /// <summary>Displays a modal explanation without discarding the current shop or selection.</summary>
+        public void ShowNotification(string titleText, string message)
+        {
+            notificationTitle = titleText;
+            notificationMessage = message;
+            shopDrag.Cancel();
+        }
+
+        /// <summary>Dismisses a notification while preventing the closing input from reaching the world.</summary>
+        public void CloseNotification()
+        {
+            notificationMessage = null;
+            notificationClosedFrame = Time.frameCount;
+        }
         private bool audioSettingsOpen;
         private bool guestResetPending;
         private GUIStyle volumeSliderTrack;
@@ -819,7 +840,7 @@ namespace LittleColony
             }
 
             Vector2 p = new Vector2(screen.x / Scale, (Screen.height - screen.y) / Scale);
-            if (shopOpen || settingsOpen)
+            if (shopOpen || settingsOpen || IsNotificationOpen)
             {
                 return true;
             }
@@ -890,7 +911,7 @@ namespace LittleColony
             InitializeStyles();
             GUI.matrix = Matrix4x4.Scale(Vector3.one * Scale);
             bool previousEnabled = GUI.enabled;
-            GUI.enabled = previousEnabled && !settingsOpen;
+            GUI.enabled = previousEnabled && !settingsOpen && !IsNotificationOpen;
             DrawHeader();
             DrawJournalPanel();
             if (!Game.Placing.HasValue)
@@ -921,7 +942,7 @@ namespace LittleColony
             }
 
             DrawSettingsButton();
-            GUI.enabled = previousEnabled && !settingsOpen;
+            GUI.enabled = previousEnabled && !settingsOpen && !IsNotificationOpen;
             if (Game.Placing.HasValue)
             {
                 if (Game.DraftLocked && Game.DraftVisible)
@@ -942,16 +963,42 @@ namespace LittleColony
                 }
             }
 
-            GUI.enabled = previousEnabled;
+            GUI.enabled = previousEnabled && !IsNotificationOpen;
             DrawSettingsPanel();
             GUI.enabled = previousEnabled;
+            GUI.matrix = Matrix4x4.identity;
+            DrawNotification();
+        }
+
+        /// <summary>Draws a readable, touch-sized modal above the game on desktop and mobile.</summary>
+        private void DrawNotification()
+        {
+            if (notificationMessage == null)
+            {
+                return;
+            }
+
+            float scale = Mathf.Min(Mathf.Max(Scale, ScreenPixelRatio), Screen.width / 340f, Screen.height / 300f);
+            GUI.matrix = Matrix4x4.Scale(Vector3.one * scale);
+            float width = Screen.width / scale;
+            float height = Screen.height / scale;
+            DrawBox(new Rect(0, 0, width, height), shadow, false);
+            var panel = new Rect((width - 324) / 2, (height - 280) / 2, 324, 280);
+            DrawBox(panel, hudFrame);
+            DrawBox(new Rect(panel.x + 5, panel.y + 5, panel.width - 10, panel.height - 10), paper, false);
+            DrawLabel(new Rect(panel.x + 20, panel.y + 20, 284, 36), notificationTitle, heading, ink);
+            DrawLabel(new Rect(panel.x + 20, panel.y + 70, 284, 128), notificationMessage, body, ink);
+            if (DrawButton(new Rect(panel.x + 20, panel.y + 212, 284, 48), I18n.Source("popup.ok"), true, true))
+            {
+                CloseNotification();
+            }
             GUI.matrix = Matrix4x4.identity;
         }
 
         /// <summary>Updates drag scrolling once per frame and releases capture when the list changes.</summary>
         private void Update()
         {
-            if (!shopOpen || settingsOpen || shopPage == 4 || Game == null
+            if (!shopOpen || settingsOpen || IsNotificationOpen || shopPage == 4 || Game == null
                 || Game.IsWelcomeScreenOpen || Game.Placing.HasValue || dragShopPage != shopPage)
             {
                 shopDrag.Cancel();
@@ -1040,7 +1087,7 @@ namespace LittleColony
         private void DrawSettingsButton()
         {
             bool previousEnabled = GUI.enabled;
-            GUI.enabled = true;
+            GUI.enabled = !IsNotificationOpen;
             bool clicked = DrawIconButton(new Rect(18, H - 208, 100, 78), gearIcon, I18n.Source("hud.settings"));
             GUI.enabled = previousEnabled;
             if (clicked)
@@ -1317,8 +1364,8 @@ namespace LittleColony
                     ink);
                 if (DrawButton(new Rect(cx + 11, cy + (grid ? 139 : 194), cardWidth - 30, grid ? 32 : 25), locked ? I18n.Source("action.locked") : I18n.Source("action.select"), !locked, true))
                 {
-                    shopOpen = false;
                     Game.Build(kind);
+                    shopOpen = !Game.Placing.HasValue;
                 }
             }
 

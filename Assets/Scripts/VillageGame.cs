@@ -293,6 +293,16 @@ namespace LittleColony
                 return;
             }
 
+            if (ui.IsNotificationOpen)
+            {
+                if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Return))
+                {
+                    ui.CloseNotification();
+                }
+                pointerOnUI = true;
+                return;
+            }
+
             if (Input.GetKeyDown(KeyCode.Escape) && !ui.CloseSettings())
             {
                 Cancel();
@@ -540,19 +550,19 @@ namespace LittleColony
 
             if (State.acorns < VillageState.Cost(kind))
             {
-                Notice = I18n.Source("notice.need_acorns");
+                ShowActionError(I18n.Source("popup.money_title"), I18n.Format("popup.money", VillageState.Cost(kind), State.acorns, VillageState.Cost(kind) - State.acorns));
                 return;
             }
 
             if (VillageState.IsFood(kind) && State.ActiveFood != null)
             {
-                Notice = I18n.Source("error.food_exists");
+                ShowActionError(I18n.Source("popup.action_title"), I18n.Source("error.food_exists"));
                 return;
             }
 
             if (VillageState.IsFood(kind) && State.energy >= VillageState.MaxEnergy)
             {
-                Notice = I18n.Source("error.full_energy");
+                ShowActionError(I18n.Source("popup.action_title"), I18n.Source("error.full_energy"));
                 return;
             }
 
@@ -680,6 +690,13 @@ namespace LittleColony
             Notice = draft ? I18n.Source("notice.move_cancelled") : I18n.Source("notice.select_building");
         }
 
+        /// <summary>Retains the latest notice and presents actionable failures in a modal popup.</summary>
+        private void ShowActionError(string title, string message)
+        {
+            Notice = message;
+            ui.ShowNotification(title, message);
+        }
+
         /// <summary>
         /// Assigns the selected job option and reports any domain validation error.
         /// </summary>
@@ -691,7 +708,8 @@ namespace LittleColony
             }
             else
             {
-                Notice = error;
+                ShowActionError(I18n.Source(State.energy <= 0 ? "popup.energy_title" : "popup.action_title"),
+                    error == I18n.Source("error.feed_first") ? I18n.Source("popup.energy") : error);
             }
         }
 

@@ -97,6 +97,7 @@ namespace LittleColony.Editor
                     VerifyGardenCollectionAssets();
                     VerifyGardenAtmosphere();
                     VerifyCameraFraming();
+                    VerifyActionNotifications();
                 }
                 catch (Exception error)
                 {
@@ -110,13 +111,54 @@ namespace LittleColony.Editor
                 string errors = SessionState.GetString(ErrorsKey, "");
                 bool passed = string.IsNullOrEmpty(errors);
                 string report = passed
-                    ? "PASS: Unity Play Mode creation, worksite fireflies, account village replacement, five garden decoration assets, garden pollen/night/rain behavior, camera framing after pan/zoom, 60 animation frames, tint restoration, and teardown."
+                    ? "PASS: Unity Play Mode creation, worksite fireflies, account village replacement, five garden decoration assets, garden pollen/night/rain behavior, camera framing after pan/zoom, rejected action popups, 60 animation frames, tint restoration, and teardown."
                     : "FAIL:\n" + errors;
                 Directory.CreateDirectory("Logs");
                 File.WriteAllText("Logs/runtime-creation-result.txt", report);
                 SessionState.SetBool(PendingKey, false);
                 Debug.Log("LITTLE_COLONY_RUNTIME_CHECK: " + report);
                 EditorApplication.Exit(passed ? 0 : 1);
+            }
+        }
+
+        /// <summary>Checks rejected actions and modal dismissal without activating save or login callbacks.</summary>
+        private static void VerifyActionNotifications()
+        {
+            var root = new GameObject("Notification checks");
+            root.SetActive(false);
+            try
+            {
+                var game = root.AddComponent<VillageGame>();
+                var ui = root.AddComponent<VillageUI>();
+                ui.Game = game;
+                var village = VillageState.NewGame(100);
+                typeof(VillageGame).GetProperty("State").SetValue(game, village);
+                typeof(VillageGame).GetField("ui", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).SetValue(game, ui);
+                village.acorns = 0;
+                game.Build(BuildingKind.AntHome);
+                if (!ui.IsNotificationOpen || game.Placing.HasValue || village.acorns != 0 || village.buildings.Count != 0)
+                {
+                    throw new Exception("Unaffordable purchases must show a popup without creating a draft or spending money.");
+                }
+                ui.CloseNotification();
+                if (!ui.IsNotificationOpen)
+                {
+                    throw new Exception("Dismissing a popup must still block input for the current frame.");
+                }
+                var work = new Building { id = 1, kind = BuildingKind.Pile, tier = 1, phase = JobPhase.Idle };
+                village.buildings.Add(work);
+                village.energy = 0;
+                game.Select(work.id);
+                game.StartJob(0);
+                if (!ui.IsNotificationOpen || game.Notice != I18n.Translate(I18n.Source("popup.energy"))
+                    || work.phase != JobPhase.Idle || work.remaining != 0 || village.energy != 0 || village.acorns != 0)
+                {
+                    throw new Exception("An exhausted village must show the feeding popup without starting work or changing resources.");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
             }
         }
 

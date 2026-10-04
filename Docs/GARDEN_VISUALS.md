@@ -26,3 +26,10 @@ viewport checks.
 
 All new visuals are procedural project code. No external artwork or asset
 licenses were added. Economy, placement rules, unlocks and save v9 are unchanged.
+
+The farthest camera view is framed vertically by the foreground trunk midpoint
+and rear fence. Vertical panning becomes available as the player zooms in;
+zooming back out progressively returns to that frame. Mouse-wheel and pinch
+gestures share the same limit. The Play Mode check projects the actual scenery
+anchors after extreme pan/zoom input at desktop, landscape-phone and portrait
+aspect ratios.

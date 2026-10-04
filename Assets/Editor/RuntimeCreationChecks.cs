@@ -96,6 +96,7 @@ namespace LittleColony.Editor
                     VerifyVillageReplacement();
                     VerifyGardenCollectionAssets();
                     VerifyGardenAtmosphere();
+                    VerifyCameraFraming();
                 }
                 catch (Exception error)
                 {
@@ -109,7 +110,7 @@ namespace LittleColony.Editor
                 string errors = SessionState.GetString(ErrorsKey, "");
                 bool passed = string.IsNullOrEmpty(errors);
                 string report = passed
-                    ? "PASS: Unity Play Mode creation, worksite fireflies, account village replacement, five garden decoration assets, garden pollen/night/rain behavior, 60 animation frames, tint restoration, and teardown."
+                    ? "PASS: Unity Play Mode creation, worksite fireflies, account village replacement, five garden decoration assets, garden pollen/night/rain behavior, camera framing after pan/zoom, 60 animation frames, tint restoration, and teardown."
                     : "FAIL:\n" + errors;
                 Directory.CreateDirectory("Logs");
                 File.WriteAllText("Logs/runtime-creation-result.txt", report);
@@ -338,6 +339,34 @@ namespace LittleColony.Editor
             {
                 throw new Exception("Ambient life must resume when rain ends, with meadow blossoms retained.");
             }
+        }
+
+        /// <summary>Checks the actual scenery anchors after extreme pan and zoom gestures at common aspect ratios.</summary>
+        private static void VerifyCameraFraming()
+        {
+            Transform trunk = Array.Find(world.GetComponentsInChildren<Transform>(),
+                item => item.name == "Boundary fallen tree trunk");
+            Transform upperRail = Array.Find(world.GetComponentsInChildren<Transform>(),
+                item => item.name == "Fence crossbar" && item.position.y > 1);
+            float originalAspect = world.ViewCamera.aspect;
+            foreach (float aspect in new[] { 1280f / 720, 844f / 390, 390f / 844 })
+            {
+                world.ViewCamera.aspect = aspect;
+                foreach (float direction in new[] { -1f, 1f })
+                {
+                    world.Navigate(100, new Vector2(0, direction * 100));
+                    world.Navigate(-100, new Vector2(0, direction * 100));
+                    float trunkY = world.ViewCamera.WorldToViewportPoint(trunk.position).y;
+                    float fenceY = world.ViewCamera.WorldToViewportPoint(upperRail.position).y;
+                    if (Mathf.Abs(trunkY) > .025f || fenceY < .95f || fenceY > 1.01f)
+                    {
+                        throw new Exception("Farthest zoom must frame half the foreground trunk and the rear fence after panning.");
+                    }
+                }
+            }
+
+            world.ViewCamera.aspect = originalAspect;
+            world.ResetCamera();
         }
 
         /// <summary>

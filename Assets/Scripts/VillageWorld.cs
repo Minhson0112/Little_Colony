@@ -34,9 +34,10 @@ namespace LittleColony
         const float BeeSpeed = 3.2f;
         const float AntScale = .65f;
         const float BeeScale = .75f;
-        const float DefaultCameraZoom = 9.7f;
+        const float DefaultCameraZoom = 9.3f;
         const float MinCameraZoom = 5.2f;
-        const float MaxCameraZoom = 9.7f;
+        const float MaxCameraZoom = DefaultCameraZoom;
+        const float DefaultCameraTargetZ = 1.75f;
         public Camera ViewCamera { get; private set; }
 
         private readonly Dictionary<int, GameObject> buildings = new Dictionary<int, GameObject>();
@@ -73,7 +74,7 @@ namespace LittleColony
         private Material ghostMaterial;
         private LineRenderer marker;
         private LineRenderer selection;
-        private Vector3 cameraTarget = new Vector3(0, 0, 2.1f);
+        private Vector3 cameraTarget = new Vector3(0, 0, DefaultCameraTargetZ);
         private readonly Vector3 cameraOffset = new Vector3(0, 18, -19);
         private Vector3 visitorPosition = new Vector3(3, .2f, -3.5f);
         public Vector3 VisitorPosition => visitorPosition;
@@ -2162,14 +2163,17 @@ namespace LittleColony
         }
 
         /// <summary>
-        /// Applies camera zoom and pan within the existing limits.
+        /// Keeps the vertical view between the foreground trunk midpoint and rear fence as zoom changes.
         /// </summary>
         public void Navigate(float zoom, Vector2 pan)
         {
             ViewCamera.orthographicSize = Mathf.Clamp(ViewCamera.orthographicSize - zoom, MinCameraZoom, MaxCameraZoom);
             cameraTarget += new Vector3(pan.x, 0, pan.y);
             cameraTarget.x = Mathf.Clamp(cameraTarget.x, -VillageState.BuildHalfWidth + 3, VillageState.BuildHalfWidth - 3);
-            cameraTarget.z = Mathf.Clamp(cameraTarget.z, -VillageState.BuildHalfDepth + 2, VillageState.BuildHalfDepth);
+            float verticalPanRange = (MaxCameraZoom - ViewCamera.orthographicSize) / ViewCamera.transform.up.z;
+            cameraTarget.z = Mathf.Clamp(cameraTarget.z,
+                DefaultCameraTargetZ - verticalPanRange,
+                DefaultCameraTargetZ + verticalPanRange);
             ViewCamera.transform.position = cameraTarget + cameraOffset;
         }
 
@@ -2178,7 +2182,7 @@ namespace LittleColony
         /// </summary>
         public void ResetCamera()
         {
-            cameraTarget = new Vector3(0, 0, 2.1f);
+            cameraTarget = new Vector3(0, 0, DefaultCameraTargetZ);
             ViewCamera.orthographicSize = DefaultCameraZoom;
             Navigate(0, Vector2.zero);
         }

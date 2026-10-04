@@ -21,12 +21,17 @@ internal sealed class CheckHost : WebApplicationFactory<LittleColony.Api.Program
     private readonly string tablePrefix = "LittleColonyCheck" + Guid.NewGuid().ToString("N");
     private readonly bool facebookEnabled;
     private readonly bool discordEnabled;
+    private readonly string? publicOrigin;
+    private readonly string? originToken;
 
     /// <summary>Selects configured providers without reading or modifying the owner's credentials.</summary>
-    public CheckHost(bool facebookEnabled = true, bool discordEnabled = true)
+    public CheckHost(bool facebookEnabled = true, bool discordEnabled = true,
+        string? publicOrigin = null, string? originToken = null)
     {
         this.facebookEnabled = facebookEnabled;
         this.discordEnabled = discordEnabled;
+        this.publicOrigin = publicOrigin;
+        this.originToken = originToken;
     }
 
     /// <summary>Gets the provider transport substituted only in this check executable.</summary>
@@ -39,6 +44,9 @@ internal sealed class CheckHost : WebApplicationFactory<LittleColony.Api.Program
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.UseSetting("Hosting:PublicOrigin", publicOrigin ?? "");
+        builder.UseSetting("Hosting:OriginToken", originToken ?? "");
+        builder.UseSetting("AllowedHosts", publicOrigin == null ? "localhost;127.0.0.1" : "*");
         builder.UseSetting("Authentication:Facebook:AppId", "integration-app");
         builder.UseSetting("Authentication:Facebook:AppSecret", facebookEnabled ? "integration-secret" : "");
         builder.UseSetting("Authentication:Discord:ClientId", "integration-discord-app");
@@ -53,7 +61,10 @@ internal sealed class CheckHost : WebApplicationFactory<LittleColony.Api.Program
             ["DynamoDb:ServiceUrl"] = "http://127.0.0.1:8000",
             ["DynamoDb:PlayersTable"] = tablePrefix + "Players",
             ["DynamoDb:SavesTable"] = tablePrefix + "Saves",
-            ["WebClient:RootPath"] = ""
+            ["WebClient:RootPath"] = "",
+            ["Hosting:PublicOrigin"] = publicOrigin ?? "",
+            ["Hosting:OriginToken"] = originToken ?? "",
+            ["AllowedHosts"] = publicOrigin == null ? "localhost;127.0.0.1" : "*"
         }));
         builder.ConfigureLogging(logging => logging.ClearProviders());
         builder.ConfigureServices(services =>

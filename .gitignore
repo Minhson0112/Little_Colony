@@ -45,3 +45,7 @@ Backend/.env.*
 __pycache__/
 *.py[cod]
 
+# Private deployment state and credentials.
+.deployment-parameters.json
+.deployment-outputs.json
+

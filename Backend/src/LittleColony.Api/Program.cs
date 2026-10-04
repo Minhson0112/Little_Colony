@@ -3,11 +3,12 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using LittleColony.Api.Authentication;
 using LittleColony.Api.Players;
 using LittleColony.Api.Saves;
+using Amazon.Lambda.AspNetCoreServer.Hosting;
 
 namespace LittleColony.Api;
 
 /// <summary>
-/// Hosts authenticated cloud saves, Facebook sign-in, the local WebGL build, and dependency health endpoints.
+/// Hosts authenticated cloud saves, provider sign-in, the WebGL build, and dependency health endpoints.
 /// </summary>
 public sealed class Program
 {
@@ -18,6 +19,9 @@ public sealed class Program
     public static async Task Main(string[] args)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+        builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi);
+        builder.AddProductionHosting();
+        await builder.LoadProductionAuthenticationAsync();
         builder.Services.AddProblemDetails();
         builder.Services.AddVillageDatabase(builder.Configuration, builder.Environment);
         builder.Services.AddSingleton<PlayerRepository>();
@@ -43,6 +47,7 @@ public sealed class Program
         });
 
         WebApplication app = builder.Build();
+        app.UseProductionOrigin();
         app.UseExceptionHandler();
         app.UseCors();
         app.UseAuthentication();

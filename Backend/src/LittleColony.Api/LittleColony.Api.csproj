@@ -4,6 +4,8 @@
     <UserSecretsId>LittleColony.LocalBackend</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Amazon.AspNetCore.DataProtection.SSM" Version="4.0.3" />
+    <PackageReference Include="Amazon.Lambda.AspNetCoreServer.Hosting" Version="2.2.1" />
     <PackageReference Include="AWSSDK.DynamoDBv2" Version="4.0.107" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Facebook" Version="8.0.31" />
   </ItemGroup>

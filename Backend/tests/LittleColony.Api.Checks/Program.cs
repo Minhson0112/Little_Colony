@@ -93,6 +93,7 @@ internal static class Program
         Expect((await alice.GetAsync("/api/save")).StatusCode == HttpStatusCode.Unauthorized, "Logout revokes this browser session");
         await CheckDiscordAsync(host, clientOptions, aliceId);
         await CheckProviderAvailabilityAsync(clientOptions);
+        await CheckProductionOriginAsync();
         Console.WriteLine($"PASS: {assertions} API checks against DynamoDB Local. Provider HTTP responses simulated only inside this test executable.");
     }
 
@@ -153,6 +154,38 @@ internal static class Program
             requestId = Guid.NewGuid().ToString(),
             state = new { version = 9, acorns, savedAt = 1000L, buildings = Array.Empty<object>() }
         };
+    }
+
+    /// <summary>Checks canonical production callbacks and rejects viewer-controlled forwarded hosts.</summary>
+    private static async Task CheckProductionOriginAsync()
+    {
+        const string publicOrigin = "https://little-colony-check.cloudfront.net";
+        const string originToken = "integration-private-origin-token-for-cdn";
+        await using var host = new CheckHost(publicOrigin: publicOrigin, originToken: originToken);
+        using HttpClient client = host.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://lambda-origin.example")
+        });
+        client.DefaultRequestHeaders.Add("X-Forwarded-Host", "untrusted.example");
+        client.DefaultRequestHeaders.Add("X-Forwarded-Proto", "http");
+        Expect((await client.GetAsync("/api/session")).StatusCode == HttpStatusCode.Forbidden,
+            "Direct origin access without the CDN token is rejected");
+        client.DefaultRequestHeaders.Add("X-LittleColony-Origin", "incorrect-token");
+        Expect((await client.GetAsync("/auth/facebook")).StatusCode == HttpStatusCode.Forbidden,
+            "Incorrect CDN origin tokens are rejected");
+        client.DefaultRequestHeaders.Remove("X-LittleColony-Origin");
+        client.DefaultRequestHeaders.Add("X-LittleColony-Origin", originToken);
+        foreach (string provider in new[] { "facebook", "discord" })
+        {
+            using HttpResponseMessage challenge = await client.GetAsync("/auth/" + provider);
+            Expect(challenge.StatusCode == HttpStatusCode.Redirect, "Production provider challenge starts");
+            var query = QueryHelpers.ParseQuery(challenge.Headers.Location!.Query);
+            Expect(query["redirect_uri"].ToString() == publicOrigin + "/signin-" + provider,
+                "Production callback uses configured HTTPS origin, ignoring forwarded headers: " + query["redirect_uri"]);
+        }
+        Expect((await client.GetAsync("/api/save")).StatusCode == HttpStatusCode.Unauthorized,
+            "Production origin middleware preserves anonymous save rejection");
     }
 
     /// <summary>Completes the real correlation and cookie flow using test-only provider responses.</summary>

@@ -98,6 +98,7 @@ namespace LittleColony.Editor
                     VerifyGardenAtmosphere();
                     VerifyCameraFraming();
                     VerifyActionNotifications();
+                    VerifyLanternLighting();
                 }
                 catch (Exception error)
                 {
@@ -111,13 +112,70 @@ namespace LittleColony.Editor
                 string errors = SessionState.GetString(ErrorsKey, "");
                 bool passed = string.IsNullOrEmpty(errors);
                 string report = passed
-                    ? "PASS: Unity Play Mode creation, worksite fireflies, account village replacement, five garden decoration assets, garden pollen/night/rain behavior, camera framing after pan/zoom, rejected action popups, 60 animation frames, tint restoration, and teardown."
+                    ? "PASS: Unity Play Mode creation, worksite fireflies, account village replacement, five garden decoration assets, garden pollen/night/rain behavior, camera framing after pan/zoom, rejected action popups, localized lantern night lighting and relocation, 60 animation frames, tint restoration, and teardown."
                     : "FAIL:\n" + errors;
                 Directory.CreateDirectory("Logs");
                 File.WriteAllText("Logs/runtime-creation-result.txt", report);
                 SessionState.SetBool(PendingKey, false);
                 Debug.Log("LITTLE_COLONY_RUNTIME_CHECK: " + report);
                 EditorApplication.Exit(passed ? 0 : 1);
+            }
+        }
+
+        /// <summary>Verifies local night illumination, visible shade emission, day shutdown, and relocation.</summary>
+        private static void VerifyLanternLighting()
+        {
+            state = VillageState.NewGame(100);
+            var lamp = new Building { id = 31000, kind = BuildingKind.Lantern, tier = 1, x = 4, z = 0 };
+            state.buildings.Add(lamp);
+            world.ReplaceVillage(state);
+            var glow = world.GetComponentInChildren<LanternGlow>();
+            var light = glow.GetComponentInChildren<Light>();
+            var view = Array.Find(world.GetComponentsInChildren<BuildingView>(), item => item.id == lamp.id);
+            var shade = Array.Find(view.GetComponentsInChildren<Renderer>(), item => item.name.StartsWith("Lamp body", StringComparison.Ordinal));
+            state.worldTime = 270;
+            world.ApplyClimate(state, 0);
+            if (shade == null || !light.enabled || light.intensity <= 0 || light.range > 3.2f
+                || light.renderMode != LightRenderMode.ForcePixel
+                || shade.sharedMaterial.GetColor("_EmissionColor").maxColorComponent < 1
+                || Vector3.Distance(light.transform.position, shade.bounds.center) > .01f)
+            {
+                throw new Exception("Lantern must emit from its shade using a bounded per-pixel light at night.");
+            }
+            var target = new RenderTexture(1280, 720, 24);
+            var capture = new Texture2D(1280, 720, TextureFormat.RGB24, false);
+            RenderTexture previous = RenderTexture.active;
+            RenderTexture previousTarget = world.ViewCamera.targetTexture;
+            try
+            {
+                world.ViewCamera.targetTexture = target;
+                world.ViewCamera.Render();
+                RenderTexture.active = target;
+                capture.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0);
+                capture.Apply();
+                Directory.CreateDirectory("Logs");
+                File.WriteAllBytes("Logs/lantern-night-check.png", capture.EncodeToPNG());
+            }
+            finally
+            {
+                world.ViewCamera.targetTexture = previousTarget;
+                RenderTexture.active = previous;
+                target.Release();
+                UnityEngine.Object.Destroy(target);
+                UnityEngine.Object.Destroy(capture);
+            }
+            lamp.x = -5;
+            lamp.rotation = 1;
+            world.Sync(state);
+            if (Vector3.Distance(light.transform.position, shade.bounds.center) > .01f)
+            {
+                throw new Exception("Lantern illumination did not follow the moved shade.");
+            }
+            state.worldTime = 100;
+            world.ApplyClimate(state, 0);
+            if (light.enabled || light.intensity != 0 || shade.sharedMaterial.GetColor("_EmissionColor").maxColorComponent > .01f)
+            {
+                throw new Exception("Lantern lighting must turn off during daytime.");
             }
         }
 

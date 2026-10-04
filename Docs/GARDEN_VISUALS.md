@@ -33,3 +33,10 @@ zooming back out progressively returns to that frame. Mouse-wheel and pinch
 gestures share the same limit. The Play Mode check projects the actual scenery
 anchors after extreme pan/zoom input at desktop, landscape-phone and portrait
 aspect ratios.
+
+
+## Lantern illumination
+
+Lanterns use a forced per-pixel point light with a 3.2-unit range and 1.8 maximum intensity. This prevents automatic vertex lighting from interpolating a local lamp across the large ground mesh. The lamp body has its own emissive material, faded with the same day/night amount; the hidden glowing sphere was removed. Light position follows the imported shade bounds, including after relocation and rotation. Owned materials are released on teardown.
+
+Unity Play Mode checks cover night emission, bounded light range and render mode, day shutdown, and relocation. `Docs/lantern-night-check.png` is a rendered Unity runtime check at night.

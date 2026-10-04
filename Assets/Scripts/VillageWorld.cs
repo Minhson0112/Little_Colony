@@ -234,28 +234,22 @@ namespace LittleColony
         }
 
         /// <summary>
-        /// Attaches a glowing lantern core and registers its night light.
+        /// Attaches illumination to the visible lamp shade and registers its night light.
         /// </summary>
         void AttachLanternLight(int id, GameObject obj)
         {
             // The imported FBX root has an axis conversion, so keep the light in world space.
             var root = new GameObject(I18n.Source("object.lantern_light"));
             root.transform.SetParent(transform);
-            root.transform.position = obj.transform.position + Vector3.up * 1.35f;
-            var orb = CreateSitePart(root.transform, I18n.Source("object.lantern_core"), PrimitiveType.Sphere, Vector3.zero, new Vector3(.24f, .24f, .24f), "#FFE7A0");
-            var glow = new Material(Shader.Find("Standard"))
-            {
-                color = ColorOf("#FFE7A0")
-            };
-            glow.EnableKeyword("_EMISSION");
-            glow.SetColor("_EmissionColor", ColorOf("#FFD077") * 2.2f);
-            orb.GetComponent<Renderer>().sharedMaterial = glow;
-            var light = orb.AddComponent<Light>();
+            var source = new GameObject("Lantern illumination");
+            source.transform.SetParent(root.transform, false);
+            var light = source.AddComponent<Light>();
             light.type = LightType.Point;
             light.color = ColorOf("#FFD18A");
-            light.range = 4.2f;
+            light.range = 3.2f;
             light.intensity = 0;
             light.shadows = LightShadows.None;
+            root.AddComponent<LanternGlow>().Initialize(obj, light);
             lanternLights[id] = light;
         }
 
@@ -704,8 +698,7 @@ namespace LittleColony
             {
                 if (light != null)
                 {
-                    light.enabled = glow > .02f;
-                    light.intensity = 2.8f * glow;
+                    light.GetComponentInParent<LanternGlow>().SetBrightness(glow);
                 }
             }
 
@@ -811,7 +804,7 @@ namespace LittleColony
 
                 if (b.kind == BuildingKind.Lantern && lanternLights.TryGetValue(b.id, out var lanternLight) && lanternLight != null)
                 {
-                    lanternLight.transform.parent.position = obj.transform.position + Vector3.up * 1.35f;
+                    lanternLight.GetComponentInParent<LanternGlow>().Align(obj.transform.position);
                 }
 
                 bool upgrading = b.upgradeRemaining > 0;
